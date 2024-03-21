@@ -1,5 +1,6 @@
 package com.tma.user_management.security;
 
+import com.tma.user_management.service.RedisService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -31,6 +33,9 @@ public class JWTFilter extends OncePerRequestFilter {
     @Autowired
     private UserDetailsServiceImpl userDetailsService;
 
+    @Autowired
+    private RedisService redisService;
+
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
@@ -39,8 +44,14 @@ public class JWTFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         try {
             String token = resolveToken(request);
-            if(StringUtils.hasText(token) && jwtTokenProvider.validateToken(token)) {
+            if (StringUtils.hasText(token) && jwtTokenProvider.validateToken(token)) {
                 String username = jwtTokenProvider.getUsernameFromToken(token);
+                String tokenFromRedis = redisService.getJWTFromUsername(username);
+
+                if (!token.equals(tokenFromRedis)) {
+                    redisService.removeJTWRedis(username);
+                    throw new BadCredentialsException("Token not match with Redis");
+                }
 
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
                 UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(userDetails, null,

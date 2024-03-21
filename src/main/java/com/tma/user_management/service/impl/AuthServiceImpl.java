@@ -17,6 +17,7 @@ public class AuthServiceImpl implements AuthService {
     private PasswordEncoder passwordEncoder;
     private AuthenticationManager authenticationManager;
     private JWTTokenProvider jwtTokenProvider;
+
     @Override
     public String login(LoginDTO loginDTO) {
         Authentication authentication = authenticationManager.authenticate(
@@ -25,6 +26,7 @@ public class AuthServiceImpl implements AuthService {
                 )
         );
         SecurityContextHolder.getContext().setAuthentication(authentication);
+
         return jwtTokenProvider.createToken(authentication);
     }
 }
